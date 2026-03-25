@@ -1,2 +1,2 @@
 # NOTHING
-<imagesrc="mustafa">
+<imagesrc="mustafa.png">
