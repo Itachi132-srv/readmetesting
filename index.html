@@ -8,35 +8,91 @@
   body {
     font-family: 'Arial', sans-serif;
     text-align: center;
-    background: linear-gradient(to bottom, #ffdde1, #ee9ca7);
+    background: linear-gradient(to bottom, #fefcea, #f1da36);
     color: #333;
+    margin: 0;
+    padding: 0;
   }
   h1 { margin-top: 20px; }
-  #levels { display: flex; flex-wrap: wrap; justify-content: center; margin: 20px; }
+  #levels { 
+    display: flex; 
+    flex-wrap: wrap; 
+    justify-content: center; 
+    margin: 20px; 
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+  }
   .level {
     width: 60px;
     height: 60px;
     line-height: 60px;
     margin: 5px;
     border-radius: 10px;
-    background-color: #6a5acd;
     color: white;
     font-weight: bold;
     cursor: pointer;
+    position: relative;
     transition: 0.3s;
+    font-size: 18px;
   }
-  .level:hover { transform: scale(1.1); }
-  .locked { background-color: #ccc; cursor: not-allowed; }
+  .level:hover:not(.locked) { transform: scale(1.1); }
+  .locked { background-color: #aaa; cursor: not-allowed; }
+  .locked::after {
+    content: " ꗃ";
+    font-size: 18px;
+  }
+  .completed { background-color: #32cd32; }
+  
   #questionContainer {
+    margin-top: 30px;
+    padding: 20px;
+    background: #fff8dc;
+    border-radius: 15px;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
     display: none;
-    margin-top: 20px;
   }
   #question { font-size: 24px; margin-bottom: 10px; }
-  #answerInput { display: none; } /* Hide default input */
-  #keyboard { display: grid; grid-template-columns: repeat(3, 60px); gap: 10px; justify-content: center; margin-top: 10px; }
-  .key { background-color: #ff7f50; color: white; font-size: 20px; padding: 15px; border-radius: 10px; cursor: pointer; user-select: none; transition: 0.2s; }
+  #answerInput { 
+    display: block; 
+    margin: 10px auto; 
+    font-size: 22px; 
+    width: 120px; 
+    text-align: center;
+  }
+  #keyboard { 
+    display: grid; 
+    grid-template-columns: repeat(3, 60px); 
+    gap: 10px; 
+    justify-content: center; 
+    margin-top: 10px; 
+  }
+  .key { 
+    background-color: #ff7f50; 
+    color: white; 
+    font-size: 20px; 
+    padding: 15px; 
+    border-radius: 10px; 
+    cursor: pointer; 
+    user-select: none; 
+    transition: 0.2s; 
+    text-align: center;
+  }
   .key:hover { transform: scale(1.1); }
   .key.wide { grid-column: span 3; background-color: #32cd32; }
+  #message { font-size: 20px; margin: 10px; height: 28px; }
+  #restart { 
+    padding: 10px 20px; 
+    background: #32cd32; 
+    color: white; 
+    border: none; 
+    border-radius: 10px; 
+    font-size: 18px; 
+    cursor: pointer; 
+    margin-top: 10px;
+  }
 </style>
 </head>
 <body>
@@ -48,12 +104,14 @@
   <div id="question"></div>
   <input type="text" id="answerInput" disabled>
   <div id="keyboard"></div>
-  <button onclick="submitAnswer()" style="margin-top:10px;padding:10px 20px;background:#ff4500;color:white;border:none;border-radius:10px;font-size:16px;cursor:pointer;">Submit</button>
+  <div id="message"></div>
+  <button id="restart">↻ Restart</button>
 </div>
 
 <script>
 let totalLevels = 50;
 let unlockedLevel = parseInt(localStorage.getItem('unlockedLevel') || 1);
+let completedLevels = JSON.parse(localStorage.getItem('completedLevels') || "[]");
 let currentLevel = null;
 let correctAnswer = null;
 
@@ -61,6 +119,8 @@ const levelsContainer = document.getElementById('levels');
 const questionContainer = document.getElementById('questionContainer');
 const answerInput = document.getElementById('answerInput');
 const keyboard = document.getElementById('keyboard');
+const message = document.getElementById('message');
+const restartBtn = document.getElementById('restart');
 
 function loadLevels() {
   levelsContainer.innerHTML = '';
@@ -69,22 +129,29 @@ function loadLevels() {
     div.innerText = i;
     div.className = 'level';
     if(i > unlockedLevel) div.classList.add('locked');
+    if(completedLevels.includes(i)) div.classList.add('completed');
     div.onclick = () => startLevel(i);
     levelsContainer.appendChild(div);
   }
 }
 
 function startLevel(level) {
-  if(level > unlockedLevel) return alert("Level locked!");
+  if(level > unlockedLevel) {
+    message.style.color = 'red';
+    message.innerText = "Level Locked!";
+    return;
+  }
   currentLevel = level;
   questionContainer.style.display = 'block';
   generateQuestion(level);
   answerInput.value = '';
+  message.innerText = '';
+  answerInput.focus();
+  answerInput.scrollIntoView({behavior: "smooth"});
 }
 
 function generateQuestion(level){
-  // Difficulty increases with level
-  let maxNum = 5 + level*2; // number range increases
+  let maxNum = 5 + level*2;
   let a = Math.floor(Math.random()*maxNum) + 1;
   let b = Math.floor(Math.random()*maxNum) + 1;
   let ops = ['+', '-', '×'];
@@ -100,19 +167,22 @@ function generateQuestion(level){
 
 function submitAnswer() {
   if(parseInt(answerInput.value) === correctAnswer){
-    alert("Correct!");
+    message.style.color = 'green';
+    message.innerText = "Correct!";
+    if(!completedLevels.includes(currentLevel)) completedLevels.push(currentLevel);
+    localStorage.setItem('completedLevels', JSON.stringify(completedLevels));
     if(currentLevel >= unlockedLevel){
       unlockedLevel = currentLevel + 1;
       localStorage.setItem('unlockedLevel', unlockedLevel);
     }
-    questionContainer.style.display = 'none';
     loadLevels();
+    setTimeout(()=> { questionContainer.style.display='none'; message.innerText=''; }, 800);
   } else {
-    alert("Try Again!");
+    message.style.color = 'red';
+    message.innerText = "Try Again!";
   }
 }
 
-// Custom number keyboard
 function createKeyboard() {
   keyboard.innerHTML = '';
   let keys = ['1','2','3','4','5','6','7','8','9','0','←','C'];
@@ -131,6 +201,24 @@ function handleKey(key){
   else if(key==='←'){ answerInput.value = answerInput.value.slice(0,-1); }
   else{ answerInput.value += key; }
 }
+
+restartBtn.onclick = () => {
+  localStorage.removeItem('unlockedLevel');
+  localStorage.removeItem('completedLevels');
+  unlockedLevel = 1;
+  completedLevels = [];
+  loadLevels();
+  questionContainer.style.display = 'none';
+  message.style.color = '';
+  message.innerText = '';
+}
+
+// Submit when pressing Enter key
+answerInput.addEventListener("keypress", function(event){
+  if(event.key === "Enter"){
+    submitAnswer();
+  }
+});
 
 loadLevels();
 createKeyboard();
